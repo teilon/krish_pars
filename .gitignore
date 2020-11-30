@@ -1,0 +1,8 @@
+**/.idea/
+**/*.txt
+!requirement*
+**/*.log
+**/__pycache__/
+**/*.html
+**/*.json
+**/*.env
