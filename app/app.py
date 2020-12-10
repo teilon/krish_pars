@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, TypedDict
 import requests
 from bs4 import BeautifulSoup
 
@@ -43,6 +43,12 @@ params = [
     "Возможен обмен"
     ]
 
+class Card_of_ad(TypedDict):
+    title: str
+    price: str
+    address: str
+    url: str
+
 def start() -> None:
     req = requests.get(url, headers=headers)
     src = req.text
@@ -79,11 +85,23 @@ def pars_pages(pages_count: int) -> None:
             src = file.read()
         
         soup = BeautifulSoup(src, "lxml")
-        card_hrefs = soup.find_all(class_="a-card__title")
+        cards = soup.find_all(class_="a-card__header")
 
         card_list = []
-        for item in card_hrefs:
-            card_list.append(f"{host}{item.get('href')}")
+        for item in cards:
+            card_href_a = item.find(class_="a-card__title").get('href')
+            card_href = f"{host}{card_href_a}"
+            card_title = item.find(class_="a-card__title").text.strip()
+            card_price = item.find(class_="a-card__price").text.strip()
+            card_address = item.find(class_="a-card__subtitle").text.strip()
+            card: Card_of_ad = {
+                "title": card_title,
+                "price": card_price,
+                "address": card_address,
+                "url": card_href
+            }
+            card_list.append(card)
+
         ads_list.extend(card_list)
         
         with open(f"data/{page}.json", "w") as file:
@@ -93,17 +111,21 @@ def pars_pages(pages_count: int) -> None:
 
 def pars_ads(page: int) -> None:
     with open(f"data/{page}.json") as file:
-        urls = json.load(file)
+        cards = json.load(file)
     
     num = 0
-    for url in urls:
+    for card in cards:
+        url = card['url']
         req = requests.get(url, headers=headers)
         src = req.text
 
         with open(f"data/{page}_{num}.html", "w") as file:
             file.write(src)
-        
+
         ad = pars_ad(page, num)
+        ad['title'] = card['title']
+        ad['price'] = card['price']
+        ad['address'] = card['address']
         print_ad(ad)
         num += 1
         
@@ -161,6 +183,8 @@ def print_ad(ad: Dict) -> None:
         writer = csv.writer(file)
         writer.writerow(
             (
+                ad["price"],
+                ad["address"],
                 ad["Город"],
                 ad["Дом"],
                 ad["Площадь"],
@@ -188,6 +212,8 @@ def print_title() -> None:
         writer = csv.writer(file)
         writer.writerow(
             (
+                "Стоимость",
+                "Адрес",
                 "Город",
                 "Дом",
                 "Площадь",
